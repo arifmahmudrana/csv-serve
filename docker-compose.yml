@@ -1,0 +1,11 @@
+version: '3.5'
+
+services:
+  api:
+    image: cosmtrek/air
+    working_dir: /go/src/app
+    volumes:
+      - .:/go/src/app
+    ports:
+      - "${PORT}:8080"
+
