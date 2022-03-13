@@ -1,5 +1,9 @@
 version: '3.5'
 
+networks:
+  backend:
+    driver: bridge
+
 services:
   api:
     image: cosmtrek/air
@@ -8,4 +12,24 @@ services:
       - .:/go/src/app
     ports:
       - "${PORT}:8080"
+    environment:
+      - CASSANDRA_DB_HOST=${CASSANDRA_DB_HOST}
+      - CASSANDRA_USER=${CASSANDRA_USER}
+      - CASSANDRA_PASSWORD=${CASSANDRA_PASSWORD}
+      - CASSANDRA_MAX_RETRY_CONNECT=${CASSANDRA_MAX_RETRY_CONNECT}
+    restart: on-failure
+    networks:
+      - backend
+    depends_on:
+      - cassandra
+
+  cassandra:
+    image: bitnami/cassandra:latest
+    environment:
+      - CASSANDRA_USER=${CASSANDRA_USER}
+      - CASSANDRA_PASSWORD=${CASSANDRA_PASSWORD}
+    volumes:
+      - ${DATA_PATH_HOST}/cassandra:/var/lib/cassandra
+    networks:
+      - backend
 
