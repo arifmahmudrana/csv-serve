@@ -1,10 +1,57 @@
 package main
 
 import (
+	"encoding/json"
+	"math"
 	"net/http"
+
+	"github.com/arifmahmudrana/csv-serve/cassandra"
+	"github.com/go-chi/chi/v5"
 )
 
 func (app *application) Ping(w http.ResponseWriter, r *http.Request) {
 	app.infoLog.Println("[api][handlerss-api][Ping] =>")
 	w.Write([]byte("PONG!"))
+}
+
+type Promotion struct {
+	ID             string  `json:"id"`
+	Price          float64 `json:"price"`
+	ExpirationDate string  `json:"expiration_date"`
+}
+
+const (
+	dateFormat = "2006-01-02 15:04:05"
+)
+
+func (p *Promotion) transform(d *cassandra.Promotion) {
+	p.ID = d.ID
+	p.Price = math.Round(d.Price*100) / 100
+	p.ExpirationDate = d.ExpirationDate.Format(dateFormat)
+}
+
+func (app *application) GetPromotion(w http.ResponseWriter, r *http.Request) {
+	app.infoLog.Println("[api][handlerss-api][GetPromotion] =>")
+
+	id := chi.URLParam(r, "promotionID")
+	d, err := app.db.GetPromotionByID(id)
+	if err != nil {
+		app.errorLog.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Something went wrong"))
+		return
+	}
+	if d == nil {
+		app.infoLog.Printf("[api][handlerss-api][GetPromotion] => promotion %s not found\n", id)
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Not Found"))
+		return
+	}
+
+	var res Promotion
+	res.transform(d)
+	encoder := json.NewEncoder(w)
+	if err := encoder.Encode(res); err != nil {
+		app.errorLog.Println(err)
+	}
 }

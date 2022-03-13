@@ -10,6 +10,7 @@ func (app *application) routes() http.Handler {
 	mux := chi.NewRouter()
 
 	mux.Get("/api/ping", app.Ping)
+	mux.Get("/api/promotions/{promotionID}", app.GetPromotion)
 
 	return mux
 }
