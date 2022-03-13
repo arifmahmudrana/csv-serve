@@ -11,6 +11,7 @@ func (app *application) routes() http.Handler {
 
 	mux.Get("/api/ping", app.Ping)
 	mux.Get("/api/promotions/{promotionID}", app.GetPromotion)
+	mux.Post("/api/promotions", app.CreatePromotion)
 
 	return mux
 }

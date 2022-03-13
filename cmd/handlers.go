@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"net/http"
+	"time"
 
 	"github.com/arifmahmudrana/csv-serve/cassandra"
 	"github.com/go-chi/chi/v5"
@@ -12,6 +13,40 @@ import (
 func (app *application) Ping(w http.ResponseWriter, r *http.Request) {
 	app.infoLog.Println("[api][handlerss-api][Ping] =>")
 	w.Write([]byte("PONG!"))
+}
+
+func (app *application) CreatePromotion(w http.ResponseWriter, r *http.Request) {
+	app.infoLog.Println("[api][handlerss-api][CreatePromotion] =>")
+
+	dec := json.NewDecoder(r.Body)
+	var p Promotion
+	if err := dec.Decode(&p); err != nil {
+		app.errorLog.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Bad request"))
+		return
+	}
+
+	expirationDate, err := time.Parse("2006-01-02 15:04:05 -0700 MST", p.ExpirationDate)
+	if err != nil {
+		app.errorLog.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Bad request"))
+		return
+	}
+
+	d := cassandra.Promotion{
+		ID:             p.ID,
+		Price:          p.Price,
+		ExpirationDate: expirationDate.UTC(),
+	}
+	if err := app.db.InsertPromotions([]cassandra.Promotion{d}); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Something went wrong"))
+		return
+	}
+
+	w.Write([]byte("OK"))
 }
 
 type Promotion struct {
