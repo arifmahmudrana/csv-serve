@@ -6,8 +6,12 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/arifmahmudrana/csv-serve/cassandra"
 )
 
 const version = "1.0.0"
@@ -15,6 +19,7 @@ const version = "1.0.0"
 type application struct {
 	infoLog, errorLog *log.Logger
 	version           string
+	db                cassandra.CassandraRepository
 }
 
 func main() {
@@ -23,6 +28,22 @@ func main() {
 		errorLog: log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
 		version:  version,
 	}
+
+	cassandraMaxRetryConnect, err := strconv.Atoi(os.Getenv("CASSANDRA_MAX_RETRY_CONNECT"))
+	if err != nil {
+		app.errorLog.Fatal(err)
+	}
+
+	db, err := cassandra.NewCassandraRepository(
+		os.Getenv("CASSANDRA_USER"),
+		os.Getenv("CASSANDRA_PASSWORD"),
+		cassandraMaxRetryConnect,
+		strings.Split(os.Getenv("CASSANDRA_DB_HOST"), ",")...)
+	if err != nil {
+		app.errorLog.Fatal(err)
+	}
+	app.db = db
+	defer app.db.Close()
 
 	// The HTTP Server
 	server := &http.Server{
@@ -44,6 +65,7 @@ func main() {
 		<-sig
 
 		// Shutdown signal with grace period of 30 seconds
+		// For not calling cancel(https://github.com/grpc/grpc-go/issues/1099)
 		shutdownCtx, _ := context.WithTimeout(serverCtx, 30*time.Second)
 
 		go func() {
@@ -62,8 +84,7 @@ func main() {
 	}()
 
 	// Run the server
-	err := server.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		app.errorLog.Fatal(err)
 	}
 
