@@ -15,6 +15,18 @@ func (app *application) Ping(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("PONG!"))
 }
 
+func (app *application) TruncatePromotion(w http.ResponseWriter, r *http.Request) {
+	app.infoLog.Println("[api][handlerss-api][TruncatePromotion] =>")
+	if err := app.db.Truncate(cassandra.TBL_PROMOTIONS); err != nil {
+		app.errorLog.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Something went wrong"))
+		return
+	}
+
+	w.Write([]byte("OK"))
+}
+
 func (app *application) CreatePromotion(w http.ResponseWriter, r *http.Request) {
 	app.infoLog.Println("[api][handlerss-api][CreatePromotion] =>")
 
@@ -41,6 +53,7 @@ func (app *application) CreatePromotion(w http.ResponseWriter, r *http.Request) 
 		ExpirationDate: expirationDate.UTC(),
 	}
 	if err := app.db.InsertPromotions([]cassandra.Promotion{d}); err != nil {
+		app.errorLog.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Something went wrong"))
 		return
