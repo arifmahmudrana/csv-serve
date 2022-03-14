@@ -42,7 +42,7 @@ const (
 			price      				double,
 			expiration_date   timestamp
 	);`
-	truncateTableQuery    = `TRUNCATE ?;`
+	truncateTableQuery    = `TRUNCATE %s;`
 	insertQuery           = `INSERT INTO %s (%s) VALUES (%s)`
 	promotionGetByIDQuery = `SELECT price, expiration_date FROM %s WHERE id = ? LIMIT 1`
 )
@@ -139,9 +139,8 @@ func (c *cassandraRepository) GetPromotionByID(id string) (*Promotion, error) {
 
 func (c *cassandraRepository) Truncate(tblName TBL_NAME) error {
 	ctx := context.Background()
-	if err := c.s.Query(truncateTableQuery, tblName).WithContext(ctx).Exec(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.s.
+		Query(fmt.Sprintf(truncateTableQuery, tblName)).
+		WithContext(ctx).
+		Exec()
 }
