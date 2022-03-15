@@ -22,13 +22,7 @@ type application struct {
 	db                cassandra.CassandraRepository
 }
 
-func main() {
-	app := &application{
-		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
-		errorLog: log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
-		version:  version,
-	}
-
+func (app *application) ConnectCassandra() {
 	cassandraMaxRetryConnect, err := strconv.Atoi(os.Getenv("CASSANDRA_MAX_RETRY_CONNECT"))
 	if err != nil {
 		app.errorLog.Fatal(err)
@@ -43,6 +37,16 @@ func main() {
 		app.errorLog.Fatal(err)
 	}
 	app.db = db
+}
+
+func main() {
+	app := &application{
+		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
+		errorLog: log.New(os.Stdout, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile),
+		version:  version,
+	}
+
+	app.ConnectCassandra()
 	defer app.db.Close()
 
 	// The HTTP Server
