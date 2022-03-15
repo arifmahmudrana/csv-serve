@@ -23,6 +23,26 @@ services:
     depends_on:
       - cassandra
 
+  cron:
+    image: cosmtrek/air
+    working_dir: /go/src/app
+    volumes:
+      - .:/go/src/app
+    environment:
+      - CASSANDRA_DB_HOST=${CASSANDRA_DB_HOST}
+      - CASSANDRA_USER=${CASSANDRA_USER}
+      - CASSANDRA_PASSWORD=${CASSANDRA_PASSWORD}
+      - CASSANDRA_MAX_RETRY_CONNECT=${CASSANDRA_MAX_RETRY_CONNECT}
+      - DATA_FILE_PATH=${DATA_FILE_PATH}
+      - CRON_SCHEDULE=${CRON_SCHEDULE}
+      - CRON_EXIT_ON_ERROR=${CRON_EXIT_ON_ERROR}
+    restart: on-failure
+    networks:
+      - backend
+    depends_on:
+      - cassandra
+    command: ["-c", ".cron.air.toml"]
+
   cassandra:
     image: bitnami/cassandra:latest
     environment:
