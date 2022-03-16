@@ -10,9 +10,7 @@ import (
 )
 
 type CSVRepository interface {
-	ReadLines(chan<- error) <-chan []string
-	ProcessLines(<-chan []string, chan<- error) <-chan cassandra.Promotion
-	SavePromotions(<-chan cassandra.Promotion, chan<- struct{}, chan<- error)
+	Process() error
 }
 
 type csvRepository struct {
@@ -113,4 +111,20 @@ func (c *csvRepository) SavePromotions(promotions <-chan cassandra.Promotion, do
 	}
 
 	done <- struct{}{}
+}
+
+func (c *csvRepository) Process() error {
+	done := make(chan struct{})
+	errChan := make(chan error)
+
+	lines := c.ReadLines(errChan)
+	promotions := c.ProcessLines(lines, errChan)
+	go c.SavePromotions(promotions, done, errChan)
+
+	select {
+	case <-done:
+		return nil
+	case err := <-errChan:
+		return err
+	}
 }
