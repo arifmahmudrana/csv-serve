@@ -10,6 +10,7 @@ import (
 	"github.com/arifmahmudrana/csv-serve/cassandra"
 	"github.com/arifmahmudrana/csv-serve/csv"
 	"github.com/arifmahmudrana/csv-serve/memcached"
+	"github.com/arifmahmudrana/csv-serve/redis"
 	"github.com/robfig/cron/v3"
 )
 
@@ -24,6 +25,7 @@ type application struct {
 	version           string
 	db                cassandra.CassandraRepository
 	m                 memcached.MemcachedRepository
+	r                 redis.RedisRepository
 }
 
 func (app *application) ConnectCassandra() {
@@ -63,9 +65,21 @@ func (app *application) ProcessCSV() {
 			app.infoLog.Println("CRON deleting all memcached!!")
 			if err := app.m.DeleteAll(); err != nil {
 				app.errorLog.Println("Memcache: ", err)
+				return
 			}
+
 			app.infoLog.Println("CRON deleting all memcached successfully!!")
 		}()
+		go func() {
+			app.infoLog.Println("CRON deleting all redis!!")
+			if err := app.r.DeleteAll(); err != nil {
+				app.errorLog.Println("Redis: ", err)
+				return
+			}
+
+			app.infoLog.Println("CRON deleting all redis successfully!!")
+		}()
+
 		return
 	}
 
@@ -85,6 +99,16 @@ func (app *application) ConnectMemcached() {
 	app.m = m
 }
 
+func (app *application) ConnectRedis() {
+	r, err := redis.NewRedisRepository(
+		os.Getenv("REDIS_SERVER"), os.Getenv("REDIS_PREFIX"))
+	if err != nil {
+		app.errorLog.Fatal(err)
+	}
+
+	app.r = r
+}
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -97,6 +121,8 @@ func main() {
 	app.ConnectCassandra()
 	defer app.db.Close()
 	app.ConnectMemcached()
+	app.ConnectRedis()
+	defer app.r.Close()
 
 	c := cron.New()
 	c.AddFunc(os.Getenv("CRON_SCHEDULE"), app.ProcessCSV)
