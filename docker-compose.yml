@@ -17,11 +17,13 @@ services:
       - CASSANDRA_USER=${CASSANDRA_USER}
       - CASSANDRA_PASSWORD=${CASSANDRA_PASSWORD}
       - CASSANDRA_MAX_RETRY_CONNECT=${CASSANDRA_MAX_RETRY_CONNECT}
+      - MEMCACHED_SERVER=${MEMCACHED_SERVER}
     restart: on-failure
     networks:
       - backend
     depends_on:
       - cassandra
+      - memcached
 
   cron:
     image: cosmtrek/air
@@ -36,11 +38,13 @@ services:
       - DATA_FILE_PATH=${DATA_FILE_PATH}
       - CRON_SCHEDULE=${CRON_SCHEDULE}
       - CRON_EXIT_ON_ERROR=${CRON_EXIT_ON_ERROR}
+      - MEMCACHED_SERVER=${MEMCACHED_SERVER}
     restart: on-failure
     networks:
       - backend
     depends_on:
       - cassandra
+      - memcached
     command: ["-c", ".cron.air.toml"]
 
   cassandra:
@@ -50,6 +54,13 @@ services:
       - CASSANDRA_PASSWORD=${CASSANDRA_PASSWORD}
     volumes:
       - ${DATA_PATH_HOST}/cassandra:/var/lib/cassandra
+    networks:
+      - backend
+
+  memcached:
+    image: memcached:alpine
+    volumes:
+      - ${DATA_PATH_HOST}/memcached:/var/lib/memcached
     networks:
       - backend
 
