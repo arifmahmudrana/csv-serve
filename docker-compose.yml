@@ -18,11 +18,14 @@ services:
       - CASSANDRA_PASSWORD=${CASSANDRA_PASSWORD}
       - CASSANDRA_MAX_RETRY_CONNECT=${CASSANDRA_MAX_RETRY_CONNECT}
       - MEMCACHED_SERVER=${MEMCACHED_SERVER}
+      - REDIS_SERVER=${REDIS_SERVER}
+      - REDIS_PREFIX=${REDIS_PREFIX}
     restart: on-failure
     networks:
       - backend
     depends_on:
       - cassandra
+      - redis
       - memcached
 
   cron:
@@ -39,11 +42,14 @@ services:
       - CRON_SCHEDULE=${CRON_SCHEDULE}
       - CRON_EXIT_ON_ERROR=${CRON_EXIT_ON_ERROR}
       - MEMCACHED_SERVER=${MEMCACHED_SERVER}
+      - REDIS_SERVER=${REDIS_SERVER}
+      - REDIS_PREFIX=${REDIS_PREFIX}
     restart: on-failure
     networks:
       - backend
     depends_on:
       - cassandra
+      - redis
       - memcached
     command: ["-c", ".cron.air.toml"]
 
@@ -61,6 +67,13 @@ services:
     image: memcached:alpine
     volumes:
       - ${DATA_PATH_HOST}/memcached:/var/lib/memcached
+    networks:
+      - backend
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - ${DATA_PATH_HOST}/redis:/data
     networks:
       - backend
 
