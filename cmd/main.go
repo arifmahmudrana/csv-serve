@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/arifmahmudrana/csv-serve/cassandra"
+	"github.com/arifmahmudrana/csv-serve/memcached"
 )
 
 const version = "1.0.0"
@@ -20,6 +21,7 @@ type application struct {
 	infoLog, errorLog *log.Logger
 	version           string
 	db                cassandra.CassandraRepository
+	m                 memcached.MemcachedRepository
 }
 
 func (app *application) ConnectCassandra() {
@@ -39,6 +41,16 @@ func (app *application) ConnectCassandra() {
 	app.db = db
 }
 
+func (app *application) ConnectMemcached() {
+	m, err := memcached.NewMemcachedRepository(
+		strings.Split(os.Getenv("MEMCACHED_SERVER"), ",")...)
+	if err != nil {
+		app.errorLog.Fatal(err)
+	}
+
+	app.m = m
+}
+
 func main() {
 	app := &application{
 		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
@@ -48,6 +60,7 @@ func main() {
 
 	app.ConnectCassandra()
 	defer app.db.Close()
+	app.ConnectMemcached()
 
 	// The HTTP Server
 	server := &http.Server{
