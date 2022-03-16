@@ -9,6 +9,7 @@ import (
 
 	"github.com/arifmahmudrana/csv-serve/cassandra"
 	"github.com/arifmahmudrana/csv-serve/csv"
+	"github.com/arifmahmudrana/csv-serve/memcached"
 	"github.com/robfig/cron/v3"
 )
 
@@ -22,6 +23,7 @@ type application struct {
 	infoLog, errorLog *log.Logger
 	version           string
 	db                cassandra.CassandraRepository
+	m                 memcached.MemcachedRepository
 }
 
 func (app *application) ConnectCassandra() {
@@ -57,6 +59,13 @@ func (app *application) ProcessCSV() {
 	err = csvRepository.Process()
 	if err == nil {
 		app.infoLog.Println("CRON run successfully")
+		go func() {
+			app.infoLog.Println("CRON deleting all memcached!!")
+			if err := app.m.DeleteAll(); err != nil {
+				app.errorLog.Println("Memcache: ", err)
+			}
+			app.infoLog.Println("CRON deleting all memcached successfully!!")
+		}()
 		return
 	}
 
@@ -64,6 +73,16 @@ func (app *application) ProcessCSV() {
 		app.errorLog.Fatal(err)
 	}
 	app.errorLog.Println(err)
+}
+
+func (app *application) ConnectMemcached() {
+	m, err := memcached.NewMemcachedRepository(
+		strings.Split(os.Getenv("MEMCACHED_SERVER"), ",")...)
+	if err != nil {
+		app.errorLog.Fatal(err)
+	}
+
+	app.m = m
 }
 
 func main() {
@@ -77,6 +96,7 @@ func main() {
 
 	app.ConnectCassandra()
 	defer app.db.Close()
+	app.ConnectMemcached()
 
 	c := cron.New()
 	c.AddFunc(os.Getenv("CRON_SCHEDULE"), app.ProcessCSV)
