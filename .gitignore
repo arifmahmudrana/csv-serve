@@ -17,3 +17,5 @@
 *.env
 
 data/*
+
+tmp*
