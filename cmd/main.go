@@ -13,6 +13,7 @@ import (
 
 	"github.com/arifmahmudrana/csv-serve/cassandra"
 	"github.com/arifmahmudrana/csv-serve/memcached"
+	"github.com/arifmahmudrana/csv-serve/redis"
 )
 
 const version = "1.0.0"
@@ -22,6 +23,7 @@ type application struct {
 	version           string
 	db                cassandra.CassandraRepository
 	m                 memcached.MemcachedRepository
+	r                 redis.RedisRepository
 }
 
 func (app *application) ConnectCassandra() {
@@ -51,6 +53,16 @@ func (app *application) ConnectMemcached() {
 	app.m = m
 }
 
+func (app *application) ConnectRedis() {
+	r, err := redis.NewRedisRepository(
+		os.Getenv("REDIS_SERVER"), os.Getenv("REDIS_PREFIX"))
+	if err != nil {
+		app.errorLog.Fatal(err)
+	}
+
+	app.r = r
+}
+
 func main() {
 	app := &application{
 		infoLog:  log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime),
@@ -61,6 +73,8 @@ func main() {
 	app.ConnectCassandra()
 	defer app.db.Close()
 	app.ConnectMemcached()
+	app.ConnectRedis()
+	defer app.r.Close()
 
 	// The HTTP Server
 	server := &http.Server{
