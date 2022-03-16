@@ -16,6 +16,4 @@
 
 *.env
 
-data/*
-
 tmp*
