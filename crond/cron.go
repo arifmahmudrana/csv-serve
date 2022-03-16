@@ -53,24 +53,17 @@ func (app *application) ProcessCSV() {
 	}
 	defer r.Close()
 
-	done := make(chan struct{})
-	errChan := make(chan error)
-
 	csvRepository := csv.NewCSVRepository(r, workers, app.db.InsertPromotions)
-	lines := csvRepository.ReadLines(errChan)
-	promotions := csvRepository.ProcessLines(lines, errChan)
-	go csvRepository.SavePromotions(promotions, done, errChan)
-
-	select {
-	case <-done:
+	err = csvRepository.Process()
+	if err == nil {
 		app.infoLog.Println("CRON run successfully")
-	case err := <-errChan:
-		if os.Getenv("CRON_EXIT_ON_ERROR") == "true" {
-			app.errorLog.Fatal(err)
-		}
-
-		app.errorLog.Println(err)
+		return
 	}
+
+	if os.Getenv("CRON_EXIT_ON_ERROR") == "true" {
+		app.errorLog.Fatal(err)
+	}
+	app.errorLog.Println(err)
 }
 
 func main() {
