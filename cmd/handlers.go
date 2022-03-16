@@ -102,4 +102,10 @@ func (app *application) GetPromotion(w http.ResponseWriter, r *http.Request) {
 	if err := encoder.Encode(res); err != nil {
 		app.errorLog.Println(err)
 	}
+
+	go func(res Promotion) {
+		if err := app.m.Set(res.ID, res); err != nil {
+			app.errorLog.Println(err)
+		}
+	}(res)
 }
